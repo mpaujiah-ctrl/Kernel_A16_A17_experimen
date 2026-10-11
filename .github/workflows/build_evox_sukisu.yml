@@ -14,7 +14,7 @@ env:
   BASE_DEFCONFIG: "vendor/sm8150-perf_defconfig"
   DEVICE_FRAGMENT1: "vendor/xiaomi/cepheus.config"
   DEVICE_FRAGMENT2: "vendor/xiaomi/sm8150-common.config"
-  LOCALVERSION: "-SukiSUSFS"
+  LOCALVERSION: "-KSUsFS"
 
 jobs:
   build:
@@ -177,7 +177,7 @@ jobs:
           export STRIP=llvm-strip
           
           # TIDAK ada 'make <defconfig>' di sini: itu akan menimpa out/.config
-          make ARCH=arm64 O=out KSU_VERSION=40900 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
+          make ARCH=arm64 O=out KSU_VERSION=32601 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
                LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
                -j"$(nproc --all)" Image.gz-dtb
 
@@ -194,11 +194,11 @@ jobs:
       - name: Pack AnyKernel3
         run: |
           cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-          cd AnyKernel3 && zip -r9 ../cepheus_EVOX_SukiSU.zip * -x README
+          cd AnyKernel3 && zip -r9 ../cepheus_EVOX_KSU.zip * -x README
 
       - name: Upload hasil build
         uses: actions/upload-artifact@v4
         with:
-          name: cepheus-EVOX-SukiSU
+          name: cepheus-EVOX-KSU
           path: |
-            cepheus_EVOX_SukiSU.zip           
+            cepheus_EVOX_KSU.zip           
