@@ -7,7 +7,7 @@ env:
   KERNEL_SOURCE: "https://github.com/mpaujiah-ctrl/kernel_xiaomi_cepheus_EVOX"
   KERNEL_BRANCH: "bka-exp"
   SUKISU_SOURCE: "https://github.com/mpaujiah-ctrl/SukiSU-Ultra"
-  SUKISU_BRANCH: "builtin"
+  SUKISU_BRANCH: "builtin-asli"
   DTC_DONOR: "https://github.com/mpaujiah-ctrl/android_kernel_xiaomi_crdroid"
   DTC_DONOR_BRANCH: "16.0"
   SUSFS_PATCH_URL: "https://raw.githubusercontent.com/mpaujiah-ctrl/Kernel-TURTLE-Sukisu-SUSFS/8e51918528d4acdb86bd00e75a03b377cea3fa3c/susfs_patch_to_4.14.patch"
@@ -177,7 +177,7 @@ jobs:
           export STRIP=llvm-strip
           
           # TIDAK ada 'make <defconfig>' di sini: itu akan menimpa out/.config
-          make ARCH=arm64 O=out KSU_VERSION=40900 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
+          make ARCH=arm64 O=out KSU_VERSION=40994 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
                LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
                -j"$(nproc --all)" Image.gz-dtb
 
