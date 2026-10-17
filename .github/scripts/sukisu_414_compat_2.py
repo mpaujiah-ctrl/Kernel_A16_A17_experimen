@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""
+Tambalan kompatibilitas SukiSU-Ultra (branch `builtin`) untuk kernel 4.14 non-GKI.
+Dijalankan pada salinan di drivers/kernelsu (BUKAN pada fork-mu di GitHub).
+
+Pemakaian:
+    python3 sukisu_414_compat.py [--susfs] drivers/kernelsu
+
+Isi:
+  0. (semua mode)    : tiga build-fix untuk snapshot builtin terbaru (kernel < 5.10):
+                       - include/uapi/supercall.h : baris KSU_IOCTL_KPM salah (nr 106) yang
+                         seharusnya KSU_IOCTL_MANAGER. Commit upstream 0af2cf9c cuma
+                         menghapusnya sehingga KSU_IOCTL_MANAGER (dipakai dispatch.c) hilang;
+                         script ini menyediakannya di kedua keadaan (sebelum/sesudah 0af2cf9c).
+                       - manager/pkg_observer.c : TRACK_THRONE_FORCE_SYNCHRONOUS tidak pernah
+                         didefinisikan -> track_throne(false).
+                       - policy/feature.c : [KSU_FEATURE_SELINUX_HIDE] dipakai tanpa kondisi,
+                         padahal enum-nya hanya ada di kernel >= 5.10.
+                       - manager/throne_tracker.c : `pkg` dipakai di luar scope-nya
+                         (seharusnya KSU_PACKAGE_NAME, sama seperti di branch main).
+  1. sulog/event.c   : USER_ARG_NULL aman di KEDUA mode
+                       (mode SUSFS minta pointer, mode non-SUSFS minta by-value)
+  2. runtime/ksud.c  : panggilan ksu_selinux_hide_* dinetralkan
+                       (selinux_hide hanya dikompilasi di kernel >= 5.10)
+  3. --susfs saja    : selinux/selinux.c: cache_sid() memanggil susfs_set_batch_sid().
+                       Di kernel < 5.10 apply_kernelsu_rules() TIDAK memanggilnya (hanya
+                       cabang >= 5.10 yang memanggil), sehingga semua SID SUSFS (zygote,
+                       ksu, init, ...) tetap 0 -> hook setresuid tidak pernah cocok ->
+                       manager tidak dapat fd & seccomp-nya tidak dimatikan -> "Unsupported".
+  4. --susfs saja    : feature/sucompat.c ditambah ksu_handle_faccessat_user /
+                       ksu_handle_stat_user (pointer user, sesuai posisi hook 4.14).
+                       Varian bawaan mode SUSFS minta `struct filename **`, padahal di
+                       4.14 faccessat/vfs_statx belum punya struct filename -> salah baca.
+
+Semua anchor harus cocok persis, kalau tidak -> exit 1.
+"""
+import pathlib
+import re
+import sys
+
+SUSFS = "--susfs" in sys.argv
+_args = [a for a in sys.argv[1:] if not a.startswith("--")]
+S = pathlib.Path(_args[0] if _args else "drivers/kernelsu")
+
+
+def die(msg):
+    print(f"[FAIL] {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def read(rel):
+    p = S / rel
+    if not p.is_file():
+        die(f"{rel} tidak ada")
+    return p, p.read_text()
+
+
+# ------------------------------------------------------------ 0. build-fix snapshot terbaru
+def fix_supercall_header():
+    """
+    Snapshot builtin yang rusak punya baris salah:
+        DECLARE(__u32, KSU_IOCTL_KPM, _IOWR('K', 106, ksu_manager_cmd));
+    maksud aslinya KSU_IOCTL_MANAGER (dipakai dispatch.c). Commit upstream 0af2cf9c
+    menghapus baris itu, tapi KSU_IOCTL_MANAGER jadi tidak terdefinisi sama sekali.
+    """
+    p, src = read("include/uapi/supercall.h")
+    bad = "DECLARE(__u32, KSU_IOCTL_KPM, _IOWR('K', 106, ksu_manager_cmd));\n"
+    good = "DECLARE(__u32, KSU_IOCTL_MANAGER, _IOWR('K', 106, struct ksu_manager_cmd));\n"
+
+    n = src.count(bad)
+    if n > 1:
+        die(f"include/uapi/supercall.h: baris salah ditemukan {n}x (harus 0 atau 1x)")
+    if n == 1:
+        p.write_text(src.replace(bad, good))
+        print("[ok]   include/uapi/supercall.h: baris KPM-106 salah -> KSU_IOCTL_MANAGER")
+        return
+
+    # sudah tidak ada baris salah (upstream sudah menghapusnya)
+    if "KSU_IOCTL_MANAGER" in src:
+        print("[skip] include/uapi/supercall.h: KSU_IOCTL_MANAGER sudah ada")
+        return
+    _, disp = read("supercall/dispatch.c")
+    if "KSU_IOCTL_MANAGER" not in disp:
+        print("[skip] include/uapi/supercall.h: dispatch.c tidak memakai KSU_IOCTL_MANAGER")
+        return
+    anchor = "DECLARE(__u32, KSU_IOCTL_LIST_TRY_UMOUNT, _IOC(_IOC_READ | _IOC_WRITE, 'K', 103, 0));\n"
+    if src.count(anchor) != 1:
+        die("include/uapi/supercall.h: anchor LIST_TRY_UMOUNT tidak ditemukan 1x - struktur upstream berubah")
+    p.write_text(src.replace(anchor, anchor + good))
+    print("[ok]   include/uapi/supercall.h: KSU_IOCTL_MANAGER ditambahkan")
+
+
+def fix_track_throne_const():
+    """pkg_observer.c memakai TRACK_THRONE_FORCE_SYNCHRONOUS yang tidak didefinisikan di mana pun.
+    track_throne(bool prune_only) -> scan penuh = false (sama seperti branch main)."""
+    p, src = read("manager/pkg_observer.c")
+    name = "TRACK_THRONE_FORCE_SYNCHRONOUS"
+    if name not in src:
+        print("[skip] manager/pkg_observer.c: konstanta tidak dipakai")
+        return
+    for f in S.rglob("*"):
+        if f.suffix in (".c", ".h") and f != p:
+            t = f.read_text(errors="ignore")
+            if f"define {name}" in t or f"{name} =" in t or f"{name}," in t:
+                print(f"[skip] manager/pkg_observer.c: {name} didefinisikan di {f.relative_to(S)}")
+                return
+    n = src.count(f"track_throne({name});")
+    if n == 0 or n != src.count(name):
+        die(f"manager/pkg_observer.c: pola {name} tidak seperti yang diharapkan ({n}x) - struktur upstream berubah")
+    p.write_text(src.replace(f"track_throne({name});", "track_throne(false);"))
+    print(f"[ok]   manager/pkg_observer.c: {name} -> false ({n}x)")
+
+
+def fix_feature_name_guard():
+    p, src = read("policy/feature.c")
+    old = '    [KSU_FEATURE_SELINUX_HIDE] = "selinux_hide",\n'
+    n = src.count(old)
+    if n == 0:
+        print("[skip] policy/feature.c: baris selinux_hide tidak ada")
+        return
+    if n != 1:
+        die(f"policy/feature.c: baris selinux_hide ditemukan {n}x (harus 1x)")
+    i = src.index(old)
+    before = src[:i].rstrip("\n").splitlines()[-1] if src[:i].strip() else ""
+    if "LINUX_VERSION_CODE" in before:
+        print("[skip] policy/feature.c: sudah dijaga versi kernel")
+        return
+    new = "#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)\n" + old + "#endif\n"
+    p.write_text(src.replace(old, new))
+    print("[ok]   policy/feature.c: selinux_hide dijaga >= 5.10")
+
+
+def fix_throne_pkg():
+    p, src = read("manager/throne_tracker.c")
+    old = (
+        "        if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0)\n"
+        "            continue;\n"
+    )
+    new = (
+        "        if (strncmp(np->package, KSU_PACKAGE_NAME, KSU_MAX_PACKAGE_NAME) == 0)\n"
+        "            continue;\n"
+    )
+    n = src.count(old)
+    if n == 0:
+        print("[skip] manager/throne_tracker.c: pola pkg salah scope tidak ada")
+        return
+    if n != 1:
+        die(f"manager/throne_tracker.c: pola ditemukan {n}x (harus 1x)")
+    p.write_text(src.replace(old, new))
+    print("[ok]   manager/throne_tracker.c: pkg -> KSU_PACKAGE_NAME")
+
+
+# ------------------------------------------------------------ 1. sulog/event.c
+def fix_user_arg_null():
+    p, src = read("sulog/event.c")
+    old = "    #define USER_ARG_NULL user_arg_null_ptr()\n"
+    new = (
+        "#ifdef CONFIG_KSU_SUSFS\n"
+        "    #define USER_ARG_NULL user_arg_null_ptr()\n"
+        "#else\n"
+        "    #define USER_ARG_NULL (*user_arg_null_ptr())\n"
+        "#endif\n"
+    )
+    if new in src:
+        print("[skip] sulog/event.c: sudah dipatch")
+        return
+    if src.count(old) != 1:
+        die(f"sulog/event.c: anchor USER_ARG_NULL ditemukan {src.count(old)}x (harus 1x)")
+    p.write_text(src.replace(old, new))
+    print("[ok]   sulog/event.c: USER_ARG_NULL kondisional per mode")
+
+
+# ------------------------------------------------------------ 2. runtime/ksud.c
+def neutralize_selinux_hide():
+    p, src = read("runtime/ksud.c")
+    n = src.count("ksu_selinux_hide_")
+    if n == 0:
+        print("[skip] runtime/ksud.c: selinux_hide sudah dinetralkan")
+        return
+    if n != 4:
+        die(f"runtime/ksud.c: jumlah ksu_selinux_hide_ = {n} (diharapkan 4) - struktur upstream berubah")
+    out = re.sub(
+        r"(?m)^([ \t]*)ksu_selinux_hide_[a-z_]+\(\);",
+        r"\1((void)0); /* 4.14: selinux_hide tidak dikompilasi */",
+        src,
+    )
+    if "ksu_selinux_hide_" in out:
+        die("runtime/ksud.c: masih ada ksu_selinux_hide_ setelah dinetralkan")
+    p.write_text(out)
+    print("[ok]   runtime/ksud.c: selinux_hide dinetralkan")
+
+
+# ------------------------------------------------------------ 3. selinux.c (SUSFS)
+def set_susfs_sids():
+    p, src = read("selinux/selinux.c")
+    if "susfs_set_batch_sid();" in src.split("void cache_sid(void)", 1)[-1].split("static bool is_sid_match", 1)[0]:
+        print("[skip] selinux/selinux.c: cache_sid sudah memanggil susfs_set_batch_sid")
+        return
+    old = (
+        '        pr_info("Cached ksu_file SID: %u\\n", ksu_file_sid);\n'
+        "    }\n"
+        "}\n"
+    )
+    new = (
+        '        pr_info("Cached ksu_file SID: %u\\n", ksu_file_sid);\n'
+        "    }\n"
+        "\n"
+        "#ifdef CONFIG_KSU_SUSFS\n"
+        "    /* kernel < 5.10: apply_kernelsu_rules() tidak memanggil ini, jadi SID SUSFS\n"
+        "     * (zygote/ksu/init/...) tetap 0 dan hook setresuid tidak pernah cocok. */\n"
+        "    susfs_set_batch_sid();\n"
+        "#endif\n"
+        "}\n"
+    )
+    n = src.count(old)
+    if n != 1:
+        die(f"selinux/selinux.c: ekor cache_sid ditemukan {n}x (harus 1x) - struktur upstream berubah")
+    p.write_text(src.replace(old, new))
+    print("[ok]   selinux/selinux.c: cache_sid() -> susfs_set_batch_sid()")
+
+
+# ------------------------------------------------------------ 4. sucompat.c (SUSFS)
+USER_FUNCS = r'''
+
+#ifdef CONFIG_KSU_SUSFS
+/*
+ * 4.14: titik hook faccessat / vfs_statx menerima pointer USER, bukan struct filename.
+ * Varian bawaan mode SUSFS (struct filename **) tidak bisa dipakai di sini, jadi
+ * logikanya sama dengan varian non-SUSFS yang sudah terbukti jalan.
+ */
+static __always_inline bool ksu_is_su_allowed_user(const char __user *const *p)
+{
+    if (!ksu_su_compat_enabled)
+        return false;
+
+    if (likely(test_thread_flag(TIF_SECCOMP)))
+        return false;
+
+    if (!ksu_is_allow_uid_for_current(current_uid().val))
+        return false;
+
+    if (unlikely(!p || !*p))
+        return false;
+
+    return true;
+}
+
+static noinline void ksu_sucompat_user_to_sh(const char __user **filename_user, const char *syscall_name)
+{
+    char path[sizeof(su_path)] = { 0 }; // sizeof includes nullterm already!
+    long len = ksu_strncpy_from_user_nofault(path, *filename_user, sizeof(path));
+    char __user *sh;
+
+    if (unlikely(len <= 0))
+        return;
+
+    if (likely(memcmp(path, su_path, sizeof(su_path))))
+        return;
+
+    sh = sh_user_path();
+    if (!sh)
+        return;
+
+    pr_info("%s su->sh!\n", syscall_name);
+    *filename_user = sh;
+}
+
+int ksu_handle_faccessat_user(int *dfd, const char __user **filename_user, int *mode, int *__unused_flags)
+{
+    if (!ksu_is_su_allowed_user(filename_user))
+        return 0;
+
+    ksu_sucompat_user_to_sh(filename_user, "faccessat");
+    return 0;
+}
+
+int ksu_handle_stat_user(int *dfd, const char __user **filename_user, int *flags)
+{
+    if (!ksu_is_su_allowed_user(filename_user))
+        return 0;
+
+    ksu_sucompat_user_to_sh(filename_user, "newfstatat");
+    return 0;
+}
+#endif /* CONFIG_KSU_SUSFS */
+'''
+
+
+def add_user_hooks():
+    p, src = read("feature/sucompat.c")
+    if "ksu_handle_faccessat_user" in src:
+        print("[skip] feature/sucompat.c: varian *_user sudah ada")
+        return
+    # sanity: pastikan helper yang kita pakai memang ada di file ini
+    for need in ("sh_user_path", "static const char su_path[]", "ksu_su_compat_enabled"):
+        if need not in src:
+            die(f"feature/sucompat.c: '{need}' tidak ditemukan - struktur upstream berubah")
+    if "void __exit ksu_sucompat_exit(void)" not in src:
+        die("feature/sucompat.c: ksu_sucompat_exit tidak ditemukan - struktur upstream berubah")
+    p.write_text(src.rstrip("\n") + "\n" + USER_FUNCS)
+    print("[ok]   feature/sucompat.c: ksu_handle_{faccessat,stat}_user ditambahkan")
+
+
+def main():
+    fix_supercall_header()
+    fix_track_throne_const()
+    fix_feature_name_guard()
+    fix_throne_pkg()
+    fix_user_arg_null()
+    neutralize_selinux_hide()
+    if SUSFS:
+        set_susfs_sids()
+        add_user_hooks()
+    print("[+] Kompat SukiSU 4.14 selesai (%s)." % ("mode SUSFS" if SUSFS else "tanpa SUSFS"))
+
+
+if __name__ == "__main__":
+    main()
