@@ -1,0 +1,53 @@
+name: Build Kernelcepheus
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        description: 'Defconfig target'
+        default: 'vendor/cepheus_defconfig'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Clone Kernel Source + KernelSU
+      run: |
+        git clone --depth=1 https://github.com/crdroidandroid/android_kernel_xiaomi_cepheus kernel
+        git clone --depth=1 https://github.com/KernelSU/KernelSU kernel/KernelSU
+
+    - name: Apply KernelSU Patch
+      run: |
+        echo 'KERNELSU := true' >> kernel/Makefile
+        sed -i '1i#include <ksu/ksu.h>' kernel/init/main.c
+        sed -i '/start_kernel()/a\ \ \ \ ksu_init();' kernel/init/main.c
+
+    - name: Setup Clang
+      run: |
+        git clone --depth=1 https://github.com/kdrag0n/proton-clang.git
+
+    - name: Build Kernel
+      run: |
+        cd kernel
+        export PATH="../proton-clang/bin:$PATH"
+        export ARCH=arm64
+        make O=out vendor/cepheus_defconfig
+        make -j$(nproc) O=out \
+            ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu-
+
+    - name: Package with AnyKernel3
+      run: |
+        git clone https://github.com/osm0sis/AnyKernel3.git
+        cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+        cd AnyKernel3
+        zip -r9 ../cepheus-ksu.zip *
+
+    - name: Upload Result
+      uses: actions/upload-artifact@v3
+      with:
+        name: cepheus-ksu
+        path: cepheus-ksu.zip
