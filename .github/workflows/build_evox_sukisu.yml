@@ -81,7 +81,7 @@ jobs:
           echo "[+] SukiSU commit: $(git -C /tmp/sukisu rev-parse --short HEAD) @ $SUKISU_BRANCH"
           # salin biasa (BUKAN symlink)
           cp -a /tmp/sukisu/kernel drivers/kernelsu
-          python3 "$GITHUB_WORKSPACE/.github/scripts/sukisu_414_compat.py" --susfs drivers/kernelsu
+          python3 "$GITHUB_WORKSPACE/.github/scripts/sukisu_414_compat_2.py" --susfs drivers/kernelsu
 
           grep -q "kernelsu" drivers/Makefile || printf '\nobj-$(CONFIG_KSU) += kernelsu/\n' >> drivers/Makefile
           test "$(grep -c '^endmenu' drivers/Kconfig)" -eq 1
