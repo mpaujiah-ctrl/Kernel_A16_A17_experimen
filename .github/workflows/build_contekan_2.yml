@@ -21,10 +21,7 @@ jobs:
       - name: Clone kernel source
         run: |
           git clone --depth=1 -b "$KERNEL_BRANCH" "$KERNEL_SOURCE" kernel
-             
-      - name: Backport KernelSU-Next UAPI 5 (EVENT_SERVICES)
-        run: python3 ci/apply_uapi5.py .
-
+           
       - name: Verify UAPI bump
         run: |
           grep -nE "KERNEL_SU_UAPI_VERSION|EVENT_SERVICES" drivers/kernelsu/include/uapi/supercall.h
