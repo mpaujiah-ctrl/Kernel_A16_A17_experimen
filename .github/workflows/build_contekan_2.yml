@@ -90,7 +90,7 @@ jobs:
             OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
             Image.gz-dtb
           echo "== build output =="
-          ls -l out/arch/arm64/boot/
+          ls -l out/arch/arm64/boot/Image
 
       - name: Package with AnyKernel3
         run: |
