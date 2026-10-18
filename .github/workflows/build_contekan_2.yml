@@ -23,6 +23,7 @@ jobs:
           git clone --depth=1 -b "$KERNEL_BRANCH" "$KERNEL_SOURCE" kernel
            
       - name: Verify UAPI bump
+        working-directory: kernel
         run: |
           grep -nE "KERNEL_SU_UAPI_VERSION|EVENT_SERVICES" drivers/kernelsu/include/uapi/supercall.h
           grep -q "EVENT_SERVICES" drivers/kernelsu/supercall/dispatch.c
@@ -46,6 +47,7 @@ jobs:
           ls bin | head
 
       - name: Configure kernel
+        working-directory: kernel
         run: |
           export PATH="$HOME/tc/neutron-clang/bin:$PATH"
           export ARCH=arm64 SUBARCH=arm64
@@ -64,6 +66,7 @@ jobs:
           grep -E "CONFIG_KSU=|CONFIG_KSU_SUSFS=|CONFIG_LOCALVERSION|CONFIG_BUILD_ARM64" out/.config || true
 
       - name: Build kernel
+        working-directory: kernel
         run: |
           export PATH="$HOME/tc/neutron-clang/bin:$PATH"
           export ARCH=arm64 SUBARCH=arm64
