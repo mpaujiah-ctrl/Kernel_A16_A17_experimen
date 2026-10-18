@@ -2,11 +2,14 @@ name: Build cepheus kernel (KernelSU-Next UAPI 5)
 
 on:
   workflow_dispatch:
-    inputs:
-      ref:
-        description: 'Kernel source branch/tag to build'
-        default: '17.0-stable'
-        required: true
+
+env:
+  KERNEL_SOURCE: "https://github.com/JoK3rLeE/android_kernel_xiaomi_sm8150"
+  KERNEL_BRANCH: "17-ksun"  
+  BASE_DEFCONFIG: "vendor/sm8150-perf_defconfig"
+  DEVICE_FRAGMENT1: "vendor/xiaomi/cepheus.config"
+  DEVICE_FRAGMENT2: "vendor/xiaomi/sm8150-common.config"
+  LOCALVERSION: "-UAPI5"
 
 jobs:
   build:
@@ -14,10 +17,11 @@ jobs:
     steps:
       - name: Checkout kernel source
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          ref: ${{ github.event.inputs.ref || '17.0-stable' }}
-
+      
+      - name: Clone kernel source
+        run: |
+          git clone --depth=1 -b "$KERNEL_BRANCH" "$KERNEL_SOURCE" kernel
+             
       - name: Backport KernelSU-Next UAPI 5 (EVENT_SERVICES)
         run: python3 ci/apply_uapi5.py .
 
@@ -82,10 +86,13 @@ jobs:
 
       - name: Package with AnyKernel3
         run: |
-          git clone --depth=1 https://github.com/JoK3rLeE/AnyKernel3.git anykernel
-          rm -rf anykernel/.git*
-          cp out/arch/arm64/boot/Image.gz-dtb anykernel/
-          cd anykernel
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3
+          echo "=== Ganti anykernel.sh & ak3-core.sh ==="
+          cp anykernel.sh AnyKernel3/anykernel.sh
+          cp ak3-core.sh AnyKernel3/tools/ak3-core.sh
+          cat AnyKernel3/anykernel.sh
+          cp out/arch/arm64/boot/Image.gz-dtb anykernel3/
+          cd anykernel3
           zip -r9 "../cepheus-KSUN-UAPI5-$(date +%Y%m%d).zip" . -x "README*" "*.zip" ".git*"
           cd ..
           ls -l *.zip
