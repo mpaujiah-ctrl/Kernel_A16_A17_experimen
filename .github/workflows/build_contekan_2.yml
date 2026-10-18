@@ -90,7 +90,7 @@ jobs:
             OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
             Image.gz-dtb
           echo "== build output =="
-          ls -l out/arch/arm64/boot/Image
+          ls -l out/arch/arm64/boot/Image.gz-dtb
 
       - name: Package with AnyKernel3
         run: |
@@ -100,11 +100,12 @@ jobs:
           cp ak3-core.sh AnyKernel3/tools/ak3-core.sh
           cat AnyKernel3/anykernel.sh
           cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-          cd AnyKernel3 && zip -r9 ../cepheus-KSUN-UAPI5-$(date +%Y%m%d).zip -x README
+          cd AnyKernel3 && zip -r9 ../cepheus_KSUN_UAPI5.zip -x README
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cepheus-kernel
-          path: cepheus-KSUN-UAPI5-*.zip
-          if-no-files-found: error
+          name: cepheus-KSUN-UAPI5
+          path: |
+            cepheus_KSUN_UAPI5.zip
+            if-no-files-found: error
