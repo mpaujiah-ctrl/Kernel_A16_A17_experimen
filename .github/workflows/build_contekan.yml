@@ -5,7 +5,7 @@ on:
     inputs:
       config:
         description: 'Defconfig target'
-        default: 'vendor/cepheus_defconfig'
+        default: 'cepheus_defconfig'
 
 jobs:
   build:
@@ -34,7 +34,7 @@ jobs:
         cd kernel
         export PATH="../proton-clang/bin:$PATH"
         export ARCH=arm64
-        make O=out vendor/cepheus_defconfig
+        make O=out cepheus_defconfig
         make -j$(nproc) O=out \
             ARCH=arm64 \
             CC=clang \
