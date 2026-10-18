@@ -54,7 +54,7 @@ jobs:
         cd AnyKernel3 && zip -r9 ../cepheus_POSS_KSU.zip * -x README
 
     - name: Upload Result
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: cepheus-poss-ksu
         path: cepheus_POSS_KSU.zip
