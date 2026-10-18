@@ -100,7 +100,7 @@ jobs:
           cp ak3-core.sh AnyKernel3/tools/ak3-core.sh
           cat AnyKernel3/anykernel.sh
           cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-          cd AnyKernel3 && zip -r9 ../cepheus_KSUN_UAPI5.zip -x README
+          cd AnyKernel3 && zip -r9 ../cepheus_KSUN_UAPI5.zip * -x README
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
