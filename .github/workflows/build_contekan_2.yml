@@ -90,7 +90,7 @@ jobs:
             OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
             Image.gz-dtb
           echo "== build output =="
-          ls -l out/arch/arm64/boot/Image
+          ls -l out/arch/arm64/boot/
 
       - name: Package with AnyKernel3
         run: |
@@ -99,7 +99,7 @@ jobs:
           cp anykernel.sh AnyKernel3/anykernel.sh
           cp ak3-core.sh AnyKernel3/tools/ak3-core.sh
           cat AnyKernel3/anykernel.sh
-          cp out/arch/arm64/boot/Image.gz-dtb anykernel3/
+          cp kernel/out/arch/arm64/boot/Image.gz-dtb anykernel3/
           cd anykernel3
           zip -r9 "../cepheus-KSUN-UAPI5-$(date +%Y%m%d).zip" . -x "README*" "*.zip" ".git*"
           cd ..
