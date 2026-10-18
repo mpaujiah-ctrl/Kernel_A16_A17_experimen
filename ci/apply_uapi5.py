@@ -13,7 +13,7 @@ import pathlib
 import sys
 
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ".")
-base = root / "drivers/kernelsu"
+base = root / "kernel/drivers/kernelsu"
 
 # ---- 1) uapi/supercall.h: bump version + add EVENT_SERVICES ----
 p = base / "include/uapi/supercall.h"
