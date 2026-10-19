@@ -85,7 +85,7 @@ jobs:
           export OBJDUMP=llvm-objdump
           export STRIP=llvm-strip
                   
-          make ARCH=arm64 O=out KSU_VERSION=33355 LOCALVERSION=RIJEK24 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
+          make ARCH=arm64 O=out KSU_VERSION=33355 LOCALVERSION=-RIJEK24-AU CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
                LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
                -j"$(nproc --all)" Image.gz-dtb
                
