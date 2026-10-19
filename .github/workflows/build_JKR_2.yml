@@ -1,4 +1,4 @@
-name: Build Kernel Cepheus A17 RIJEK 342
+name: Build Kernel Cepheus A17 RIJEK AU
 
 on:
   workflow_dispatch:
