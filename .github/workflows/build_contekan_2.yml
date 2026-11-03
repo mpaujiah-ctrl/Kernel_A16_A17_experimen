@@ -9,7 +9,7 @@ env:
   BASE_DEFCONFIG: "vendor/sm8150-perf_defconfig"
   DEVICE_FRAGMENT1: "vendor/xiaomi/cepheus.config"
   DEVICE_FRAGMENT2: "vendor/xiaomi/sm8150-common.config"
-  LOCALVERSION: "-UAPI5"
+  LOCALVERSION: "-UAPI6"
 
 jobs:
   build:
@@ -22,6 +22,9 @@ jobs:
         run: |
           git clone --depth=1 -b "$KERNEL_BRANCH" "$KERNEL_SOURCE" kernel
            
+      - name: Backport KernelSU-Next UAPI 5 (EVENT_SERVICES)
+        run: python3 ci/apply_uapi5.py .
+      
       - name: Verify UAPI bump
         working-directory: kernel
         run: |
