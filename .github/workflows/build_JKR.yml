@@ -23,6 +23,12 @@ jobs:
       run: |
           git clone --depth=1 -b "${{ env.KERNEL_BRANCH }}" "${{ env.KERNEL_SOURCE }}" kernel       
    
+    - name: Keluarin device andromeda yang dtsi-nya syntax error (bukan device kita, ikut ke-build bareng karena CONFIG_BUILD_ARM64_DT_OVERLAY)
+      working-directory: kernel
+      run: |
+          sed -i '/andromeda-sm8150/d' arch/arm64/boot/dts/qcom/Makefile
+          grep -c "andromeda-sm8150" arch/arm64/boot/dts/qcom/Makefile || echo "[+] andromeda sudah dikeluarkan dari daftar build."
+    
     - name: Install toolchain (Clang 21 / r563880c - PERSIS sama kayak kernel yang lagi jalan di device)
       run: |
           sudo apt update
