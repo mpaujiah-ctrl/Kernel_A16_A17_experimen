@@ -1,11 +1,11 @@
-name: Build Kernel Cepheus A17 RIJEK AU
+name: Build Kernel Cepheus A17 RIJEK24
 
 on:
   workflow_dispatch:
 
 env:
   KERNEL_SOURCE: "https://github.com/JoK3rLeE/android_kernel_xiaomi_sm8150"
-  KERNEL_BRANCH: "17-ksun-audit-fixes"
+  KERNEL_BRANCH: "17-ksun"
   BASE_DEFCONFIG: "arch/arm64/configs/vendor/sm8150-perf_defconfig"
   DEVICE_FRAGMENT: "arch/arm64/configs/vendor/xiaomi/cepheus.config"
   COMMON_FRAGMENT: "arch/arm64/configs/vendor/xiaomi/sm8150-common.config"
@@ -23,25 +23,26 @@ jobs:
       run: |
           git clone --depth=1 -b "${{ env.KERNEL_BRANCH }}" "${{ env.KERNEL_SOURCE }}" kernel       
    
-    - name: Install toolchain (Clang 21 / r563880c - PERSIS sama kayak kernel yang lagi jalan di device)
+    - name: Install build dependencies
       run: |
-          sudo apt update
-          sudo apt install -y bc bison flex libssl-dev libelf-dev build-essential gcc-aarch64-linux-gnu
-          echo "=== Download clang-r563880c (AOSP resmi, cocok sama build string kernel yang jalan) via sparse git clone di commit spesifik ==="
-          mkdir -p toolchain
-          git clone --filter=blob:none --sparse --no-checkout https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 clang_repo
-          cd clang_repo
-          git fetch --depth=1 origin f8439f0628d799092dd07df440a6334cab28939c
-          git checkout FETCH_HEAD
-          git sparse-checkout set clang-r563880c
-          cd ..
-          ls clang_repo/
-          mv clang_repo/clang-r563880c toolchain/clang
-          rm -rf clang_repo
-          echo "=== Verifikasi ==="
-          toolchain/clang/bin/clang --version
-          echo "TOOLCHAIN_CLANG=$PWD/toolchain/clang/bin" >> "$GITHUB_ENV" 
- 
+        sudo apt-get update
+        sudo apt-get install -y \
+          bc bison flex libelf-dev libssl-dev python3 rsync cpio zip unzip curl
+
+    - name: Install Android Clang
+      run: |
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/clang"
+        curl -L --fail --retry 3 \
+          "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main-kernel/${CLANG_VERSION}.tar.gz" \
+          -o "$RUNNER_TEMP/${CLANG_VERSION}.tar.gz"
+        tar -xzf "$RUNNER_TEMP/${CLANG_VERSION}.tar.gz" -C "$RUNNER_TEMP/clang"
+        test -x "$RUNNER_TEMP/clang/bin/clang"
+        test -x "$RUNNER_TEMP/clang/bin/ld.lld"
+        echo "$RUNNER_TEMP/clang/bin" >> "$GITHUB_PATH"
+        "$RUNNER_TEMP/clang/bin/clang" --version
+        "$RUNNER_TEMP/clang/bin/ld.lld" --version | head -n 1
+
     - name: Merge defconfig (persis seperti ROM)
       working-directory: kernel
       run: |
@@ -85,7 +86,7 @@ jobs:
           export OBJDUMP=llvm-objdump
           export STRIP=llvm-strip
                   
-          make ARCH=arm64 O=out KSU_VERSION=33355 LOCALVERSION=-RIJEK24-AU CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
+          make ARCH=arm64 O=out KSU_VERSION=33355 LOCALVERSION=-RIJEK24 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
                LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
                -j"$(nproc --all)" Image.gz-dtb
                
