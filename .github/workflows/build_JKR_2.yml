@@ -31,17 +31,17 @@ jobs:
 
     - name: Install Android Clang
       run: |
-        set -euo pipefail
-        mkdir -p "$RUNNER_TEMP/clang"
-        curl -L --fail --retry 3 \
-          "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main-kernel/${CLANG_VERSION}.tar.gz" \
-          -o "$RUNNER_TEMP/${CLANG_VERSION}.tar.gz"
-        tar -xzf "$RUNNER_TEMP/${CLANG_VERSION}.tar.gz" -C "$RUNNER_TEMP/clang"
-        test -x "$RUNNER_TEMP/clang/bin/clang"
-        test -x "$RUNNER_TEMP/clang/bin/ld.lld"
-        echo "$RUNNER_TEMP/clang/bin" >> "$GITHUB_PATH"
-        "$RUNNER_TEMP/clang/bin/clang" --version
-        "$RUNNER_TEMP/clang/bin/ld.lld" --version | head -n 1
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/clang"
+          curl -L --fail --retry 3 \
+            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main-kernel/${CLANG_VERSION}.tar.gz" \
+            -o "$RUNNER_TEMP/${CLANG_VERSION}.tar.gz"
+          tar -xzf "$RUNNER_TEMP/${CLANG_VERSION}.tar.gz" -C "$RUNNER_TEMP/clang"
+          test -x "$RUNNER_TEMP/clang/bin/clang"
+          test -x "$RUNNER_TEMP/clang/bin/ld.lld"
+          echo "$RUNNER_TEMP/clang/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/clang/bin/clang" --version
+          "$RUNNER_TEMP/clang/bin/ld.lld" --version | head -n 1
 
     - name: Merge defconfig (persis seperti ROM)
       working-directory: kernel
