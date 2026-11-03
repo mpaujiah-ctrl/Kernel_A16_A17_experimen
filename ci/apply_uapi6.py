@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Backport KernelSU-Next UAPI v5 (EVENT_SERVICES) into an in-tree driver.
+"""Backport KernelSU-Next UAPI v6 (EVENT_SERVICES) into an in-tree driver.
 
-Usage: apply_uapi5.py [repo_root]
+Usage: apply_uapi6.py [repo_root]
 Default repo_root is the current directory.
 
 Touches only:
