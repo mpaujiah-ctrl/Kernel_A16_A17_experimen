@@ -1,4 +1,4 @@
-name: Build cepheus kernel (KernelSU-Next UAPI 5)
+name: Build cepheus kernel (KernelSU-Next UAPI 6)
 
 on:
   workflow_dispatch:
@@ -22,8 +22,8 @@ jobs:
         run: |
           git clone --depth=1 -b "$KERNEL_BRANCH" "$KERNEL_SOURCE" kernel
            
-      - name: Backport KernelSU-Next UAPI 5 (EVENT_SERVICES)
-        run: python3 ci/apply_uapi5.py .
+      - name: Backport KernelSU-Next UAPI 6 (EVENT_SERVICES)
+        run: python3 ci/apply_uapi6.py .
       
       - name: Verify UAPI bump
         working-directory: kernel
@@ -103,12 +103,12 @@ jobs:
           cp ak3-core.sh AnyKernel3/tools/ak3-core.sh
           cat AnyKernel3/anykernel.sh
           cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-          cd AnyKernel3 && zip -r9 ../cepheus_KSUN_UAPI5.zip * -x README
+          cd AnyKernel3 && zip -r9 ../cepheus_KSUN_UAPI6.zip * -x README
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cepheus-KSUN-UAPI5
+          name: cepheus-KSUN-UAPI6
           path: |
-            cepheus_KSUN_UAPI5.zip
+            cepheus_KSUN_UAPI6.zip
             if-no-files-found: error
