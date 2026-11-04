@@ -23,7 +23,9 @@ jobs:
           git clone --depth=1 -b "$KERNEL_BRANCH" "$KERNEL_SOURCE" kernel
            
       - name: Backport KernelSU-Next UAPI 6 (EVENT_SERVICES)
-        run: python3 ci/apply_uapi6.py .
+        working-directory: kernel
+        run: 
+          python3 ci/apply_uapi6.py .
       
       - name: Verify UAPI bump
         working-directory: kernel
