@@ -1,4 +1,4 @@
-name: Build cepheus kernel (KernelSU-Next UAPI 6)
+name: Build cepheus kernel (KernelSU-Next UAPI 5)
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ env:
   BASE_DEFCONFIG: "vendor/sm8150-perf_defconfig"
   DEVICE_FRAGMENT1: "vendor/xiaomi/cepheus.config"
   DEVICE_FRAGMENT2: "vendor/xiaomi/sm8150-common.config"
-  LOCALVERSION: "-UAPI6"
+  LOCALVERSION: "-UAPI5"
 
 jobs:
   build:
@@ -22,15 +22,11 @@ jobs:
         run: |
           git clone --depth=1 -b "$KERNEL_BRANCH" "$KERNEL_SOURCE" kernel
            
-      - name: Backport KernelSU-Next UAPI 6 (EVENT_SERVICES)
-        run: python3 ci/apply_uapi6.py .
-      
       - name: Verify UAPI bump
         working-directory: kernel
         run: |
           grep -nE "KERNEL_SU_UAPI_VERSION|EVENT_SERVICES" drivers/kernelsu/include/uapi/supercall.h
           grep -q "EVENT_SERVICES" drivers/kernelsu/supercall/dispatch.c
-
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
@@ -39,7 +35,6 @@ jobs:
             libyaml-dev pkg-config python3 zip unzip cpio ccache rsync \
             device-tree-compiler \
             binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf
-
       - name: Download Neutron Clang
         run: |
           mkdir -p "$HOME/tc/neutron-clang"
@@ -48,7 +43,6 @@ jobs:
           chmod +x antman
           ./antman -S
           ls bin | head
-
       - name: Configure kernel
         working-directory: kernel
         run: |
@@ -67,7 +61,6 @@ jobs:
           make O=out ARCH=arm64 olddefconfig
           echo "== relevant config =="
           grep -E "CONFIG_KSU=|CONFIG_KSU_SUSFS=|CONFIG_LOCALVERSION|CONFIG_BUILD_ARM64" out/.config || true
-
       - name: Matikan LTO total
         working-directory: kernel
         run: |
@@ -94,7 +87,6 @@ jobs:
             Image.gz-dtb
           echo "== build output =="
           ls -l out/arch/arm64/boot/Image.gz-dtb
-
       - name: Package with AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3
@@ -103,12 +95,12 @@ jobs:
           cp ak3-core.sh AnyKernel3/tools/ak3-core.sh
           cat AnyKernel3/anykernel.sh
           cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-          cd AnyKernel3 && zip -r9 ../cepheus_KSUN_UAPI6.zip * -x README
+          cd AnyKernel3 && zip -r9 ../cepheus_KSUN_UAPI5.zip * -x README
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cepheus-KSUN-UAPI6
+          name: cepheus-KSUN-UAPI5
           path: |
-            cepheus_KSUN_UAPI6.zip
+            cepheus_KSUN_UAPI5.zip
             if-no-files-found: error
