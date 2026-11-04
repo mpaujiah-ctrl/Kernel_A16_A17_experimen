@@ -24,7 +24,9 @@ jobs:
            
       - name: Backport KernelSU-Next UAPI 6 (EVENT_SERVICES)        
         run: 
-          python3 ci/apply_uapi6.py .
+          cp ci/apply_uapi6.py kernel
+          cd kernel
+          python3 apply_uapi6.py .
       
       - name: Verify UAPI bump
         working-directory: kernel
