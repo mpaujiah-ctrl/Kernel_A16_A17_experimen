@@ -76,9 +76,8 @@ jobs:
             --set-val LTO_NONE y
           make O=out ARCH=arm64 olddefconfig
 
-          head -n 10 arch/arm64/boot/dts/qcom/xiaomi/overlay/cepheus/cepheus-pinctrl.dtsi
-          file arch/arm64/boot/dts/qcom/xiaomi/overlay/cepheus/cepheus-pinctrl.dtsi
-          grep -rn '^<<<<<<<\|^>>>>>>>' arch/arm64/boot/dts/qcom/xiaomi/
+          cpp -nostdinc -undef -x assembler-with-cpp -I include -I . \
+          xiaomi/overlay/cepheus/cepheus-sm8150-overlay.dts | grep -n -B8 'for xiaomi pinctrl\|&tlmm {' | head -40
            
     - name: Build kernel
       working-directory: kernel
