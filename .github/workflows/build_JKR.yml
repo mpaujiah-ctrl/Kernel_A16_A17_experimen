@@ -75,6 +75,10 @@ jobs:
             -d LTO_CLANG -d CFI_CLANG -d CFI_CLANG_SHADOW \
             --set-val LTO_NONE y
           make O=out ARCH=arm64 olddefconfig
+
+          head -n 10 arch/arm64/boot/dts/qcom/xiaomi/overlay/cepheus/cepheus-pinctrl.dtsi
+          file arch/arm64/boot/dts/qcom/xiaomi/overlay/cepheus/cepheus-pinctrl.dtsi
+          grep -rn '^<<<<<<<\|^>>>>>>>' arch/arm64/boot/dts/qcom/xiaomi/
            
     - name: Build kernel
       working-directory: kernel
@@ -107,4 +111,4 @@ jobs:
       with:
           name: cepheus-RIJEK-24
           path: |
-            cepheus_RIJEK_24.zip           
+            cepheus_RIJEK_24.zip
