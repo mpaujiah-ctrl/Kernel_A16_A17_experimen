@@ -54,15 +54,15 @@ jobs:
         rm -rf "$OUT"
         mkdir -p "$OUT"
 
-        test -f "arch/arm64/configs/${KERNEL_DEFCONFIG}"
-        test -f "arch/arm64/configs/${KERNEL_COMMON_CONFIG}"
-        test -f "arch/arm64/configs/${KERNEL_DEVICE_CONFIG}"
+        test -f "${BASE_DEFCONFIG}"
+        test -f "${COMMON_FRAGMENT}"
+        test -f "${DEVICE_FRAGMENT}"
         test -x "$MERGE" || chmod +x "$MERGE"
 
         "$MERGE" -m -O "$OUT" \
-          "arch/arm64/configs/${KERNEL_DEFCONFIG}" \
-          "arch/arm64/configs/${KERNEL_COMMON_CONFIG}" \
-          "arch/arm64/configs/${KERNEL_DEVICE_CONFIG}"
+          "${BASE_DEFCONFIG}" \
+          "${COMMON_FRAGMENT}" \
+          "${DEVICE_FRAGMENT}"
 
         test -s "$OUT/.config"
 
