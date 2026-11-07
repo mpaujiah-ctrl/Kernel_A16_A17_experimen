@@ -11,6 +11,8 @@ env:
   DEVICE_FRAGMENT: "arch/arm64/configs/vendor/xiaomi/cepheus.config"
   COMMON_FRAGMENT: "arch/arm64/configs/vendor/xiaomi/sm8150-common.config"
   KERNEL_ARCH: "arm64"
+  ARCH: arm64
+  SUBARCH: arm64
 
 jobs:
   build:
