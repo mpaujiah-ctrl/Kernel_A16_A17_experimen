@@ -57,14 +57,14 @@ jobs:
         mkdir -p "$OUT"
 
         test -f "${BASE_DEFCONFIG}"
-        test -f "${COMMON_FRAGMENT}"
         test -f "${DEVICE_FRAGMENT}"
+        test -f "${COMMON_FRAGMENT}"
         test -x "$MERGE" || chmod +x "$MERGE"
 
         "$MERGE" -m -O "$OUT" \
           "${BASE_DEFCONFIG}" \
-          "${COMMON_FRAGMENT}" \
-          "${DEVICE_FRAGMENT}"
+          "${DEVICE_FRAGMENT}" \
+          "${COMMON_FRAGMENT}"
 
         test -s "$OUT/.config"
 
