@@ -44,17 +44,40 @@ jobs:
           "$RUNNER_TEMP/clang/bin/clang" --version
           "$RUNNER_TEMP/clang/bin/ld.lld" --version | head -n 1
 
-    - name: Merge defconfig (persis seperti ROM)
+    - name: Prepare Cepheus configuration
       working-directory: kernel
       run: |
-          export ARCH=arm64
-          mkdir -p out
-          scripts/kconfig/merge_config.sh -O out \
-            "${{ env.BASE_DEFCONFIG }}" \
-            "${{ env.DEVICE_FRAGMENT }}" \
-            "${{ env.COMMON_FRAGMENT }}"
-          make O=out ARCH=arm64 olddefconfig
-          grep -E "^CONFIG_(KSU|KSU_MANUAL_HOOK|KSU_SUSFS|INITRAMFS_IGNORE_SKIP_FLAG|EROFS_FS|QCA_CLD_WLAN|LTO_NONE)=|^CONFIG_CMDLINE=" out/.config
+        set -euo pipefail
+        OUT="$GITHUB_WORKSPACE/kernel/out"
+        MERGE="scripts/kconfig/merge_config.sh"
+
+        rm -rf "$OUT"
+        mkdir -p "$OUT"
+
+        test -f "arch/arm64/configs/${KERNEL_DEFCONFIG}"
+        test -f "arch/arm64/configs/${KERNEL_COMMON_CONFIG}"
+        test -f "arch/arm64/configs/${KERNEL_DEVICE_CONFIG}"
+        test -x "$MERGE" || chmod +x "$MERGE"
+
+        "$MERGE" -m -O "$OUT" \
+          "arch/arm64/configs/${KERNEL_DEFCONFIG}" \
+          "arch/arm64/configs/${KERNEL_COMMON_CONFIG}" \
+          "arch/arm64/configs/${KERNEL_DEVICE_CONFIG}"
+
+        test -s "$OUT/.config"
+
+        scripts/config --file out/.config \
+          -d LTO_CLANG -d CFI_CLANG -d CFI_CLANG_SHADOW \
+          --set-val LTO_NONE y
+        make O="$OUT" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 olddefconfig
+
+        echo "Final Cepheus configuration:"
+        grep -E '^(CONFIG_MACH_XIAOMI_CEPHEUS|CONFIG_TOUCHSCREEN_ST_FTS_V521|CONFIG_FTS_FOD_AREA_REPORT|CONFIG_BUILD_ARM64_DT_OVERLAY)=' "$OUT/.config"
+
+        test "$(grep -c '^CONFIG_MACH_XIAOMI_CEPHEUS=y$' "$OUT/.config")" -eq 1
+        test "$(grep -c '^CONFIG_TOUCHSCREEN_ST_FTS_V521=y$' "$OUT/.config")" -eq 1
+        test "$(grep -c '^CONFIG_FTS_FOD_AREA_REPORT=y$' "$OUT/.config")" -eq 1
+        test "$(grep -c '^CONFIG_BUILD_ARM64_DT_OVERLAY=y$' "$OUT/.config")" -eq 1
            
     - name: Clone AnyKernel3
       run: |
