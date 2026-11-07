@@ -88,35 +88,19 @@ jobs:
           cp anykernel.sh AnyKernel3/anykernel.sh
           cp ak3-core.sh AnyKernel3/tools/ak3-core.sh
           cat AnyKernel3/anykernel.sh
-    
-    - name: Matikan LTO total
-      working-directory: kernel
-      run: |
-          scripts/config --file out/.config \
-            -d LTO_CLANG -d CFI_CLANG -d CFI_CLANG_SHADOW \
-            --set-val LTO_NONE y
-          make O=out ARCH=arm64 olddefconfig
-           
+             
     - name: Build kernel
       working-directory: kernel
       run: |
-          export PATH="$TOOLCHAIN_CLANG:$PATH"
-          export ARCH=arm64
-          export CC=clang
-          export CLANG_TRIPLE=aarch64-linux-gnu-
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          export LD=ld.lld
-          export AR=llvm-ar
-          export NM=llvm-nm
-          export OBJCOPY=llvm-objcopy
-          export OBJDUMP=llvm-objdump
-          export STRIP=llvm-strip
-                  
-          make ARCH=arm64 O=out KSU_VERSION=33355 LOCALVERSION=-RIJEK24 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- \
-               LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
-               -j"$(nproc --all)" Image.gz-dtb
-               
-          ls out/arch/arm64/boot/Image
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/kernel/out"
+          JOBS="$(nproc)"
+
+          make O="$OUT" ARCH="$ARCH" KSU_VERSION=33355 LOCALVERSION="-RIJEK24-A17 SUBARCH="$SUBARCH" LLVM=1 LLVM_IAS=1 \
+            -j"$JOBS" Image.gz-dtb
+
+          test -f "$OUT/arch/arm64/boot/Image.gz-dtb"
+          ls -lh "$OUT/arch/arm64/boot/Image.gz-dtb"
    
     - name: Pack AnyKernel3
       run: |
