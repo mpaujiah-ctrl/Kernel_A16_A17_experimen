@@ -92,14 +92,42 @@ jobs:
     - name: Build kernel
       working-directory: kernel
       run: |
-          set -euo pipefail
-          JOBS="$(nproc)"
+          export PATH="$TOOLCHAIN_CLANG:$PATH"
+          export ARCH=arm64
+          export LLVM=1
+          export CC=clang
+          export AR=llvm-ar
+          export LD=ld.lld
+          export NM=llvm-nm
+          export OBJCOPY=llvm-objcopy
+          export OBJDUMP=llvm-objdump
+          export STRIP=llvm-strip
+          export CROSS_COMPILE=aarch64-linux-gnu-
 
-          make O=OUT ARCH="$ARCH" KSU_VERSION=33355 LOCALVERSION="-RIJEK24-A17 SUBARCH="$SUBARCH" LLVM=1 LLVM_IAS=1 \
-            -j"$JOBS" Image.gz-dtb
+          # TIDAK ada 'make <defconfig>' di sini: itu akan menimpa out/.config
+          make ARCH=arm64 O=out CC=clang KSU_VERSION=40900 AR=llvm-ar LD=ld.lld \
+               NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
+               -j"$(nproc --all)" Image.gz-dtb 2>&1 | tee "$GITHUB_WORKSPACE/build.log"
 
-          test -f arch/arm64/boot/Image.gz-dtb"
-          ls -lh arch/arm64/boot/Image.gz-dtb"
+          ls -l out/arch/arm64/boot/Image.gz-dtb out/arch/arm64/boot/Image
+
+    - name: Ringkasan error (kalau build gagal)
+      if: failure()
+      run: |
+          echo "=== error / undefined ==="
+          grep -nE "error:|undefined (reference|symbol)|\*\*\* \[" build.log | head -40 || true
+          echo "=== DTC ==="
+          grep -nE "FATAL ERROR|Error: .*dts" build.log | head -10 || true
+
+    - name: Verifikasi mode SUSFS + simbol hook
+      working-directory: kernel
+      continue-on-error: true
+      run: |
+          grep -E "SUSFS_VERSION|using SUSFS_INLINE_HOOK|SukiSU-Ultra version" "$GITHUB_WORKSPACE/build.log" | head -5
+          llvm-nm out/vmlinux | grep -E ' (ksu_handle_(sys_reboot|execveat|faccessat_user|stat_user|vfs_read|setresuid)|susfs_init)$' | sort -u | tee /tmp/syms
+          n=$(wc -l < /tmp/syms)
+          echo "Simbol ketemu: $n dari 7"
+          test "$n" -eq 7
    
     - name: Pack AnyKernel3
       run: |
