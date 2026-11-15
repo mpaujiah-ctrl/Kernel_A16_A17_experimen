@@ -29,6 +29,16 @@ jobs:
           sed -i '/andromeda-sm8150/d' arch/arm64/boot/dts/qcom/Makefile
           grep -c "andromeda-sm8150" arch/arm64/boot/dts/qcom/Makefile || echo "[+] andromeda sudah dikeluarkan dari daftar build."
     
+    - name: Ganti file logika dtc
+      working-directory: kernel
+      run: |
+          rm -rf /tmp/dtc17
+          git clone --depth=1 -b 17.0 "https://github.com/mpaujiah-ctrl/android_kernel_xiaomi_crdroid" /tmp/dtc17
+          for f in checks.c dtc-lexer.l dtc-lexer.lex.c_shipped dtc-parser.tab.c_shipped dtc-parser.y dtc.c dtc.h flattree.c livetree.c srcpos.c srcpos.h util.h; do
+            cp "/tmp/dtc17/scripts/dtc/$f" "scripts/dtc/$f"
+          done
+          rm -rf /tmp/dtc17
+    
     - name: Install toolchain (Clang 21 / r563880c - PERSIS sama kayak kernel yang lagi jalan di device)
       run: |
           sudo apt update
