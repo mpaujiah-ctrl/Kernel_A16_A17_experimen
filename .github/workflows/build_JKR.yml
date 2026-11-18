@@ -62,6 +62,7 @@ jobs:
       working-directory: kernel
       run: |
           export ARCH=arm64
+          sed -i 's/CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION="-RIJEK24"/' arch/arm64/configs/vendor/xiaomi/sm8150-common.config
           mkdir -p out
           scripts/kconfig/merge_config.sh -O out \
             "${{ env.BASE_DEFCONFIG }}" \
@@ -83,7 +84,7 @@ jobs:
       run: |
           scripts/config --file out/.config \
             -d LTO_CLANG -d CFI_CLANG -d CFI_CLANG_SHADOW \
-            --set-val LTO_NONE y
+            --set-val LTO_NONE y           
           make O=out ARCH=arm64 olddefconfig
 
           cpp -nostdinc -undef -x assembler-with-cpp -I include -I . \
